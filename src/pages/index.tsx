@@ -1,118 +1,254 @@
-import Image from "next/image";
-import { Inter } from "next/font/google";
+import { useEffect, useRef } from 'react'
+import { Inter } from 'next/font/google'
 
-const inter = Inter({ subsets: ["latin"] });
+import { cn } from '@/lib/utils'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
+  const canvasEl = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const options = {}
+    const canvas = new Canvas(canvasEl.current, options)
+
+    return () => {
+      canvas.dispose()
+    }
+  }, [])
+
   return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
+    <main className={cn('relative flex min-h-screen flex-col items-center', inter.className)}>
+      <div className="flex">
+        <h1>Canvas App</h1>
       </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+      <canvas ref={canvasEl} className="absolute inset-0 size-full" id="cwl-canvas">
+        Your browser does not support HTML5 canvas
+      </canvas>
     </main>
-  );
+  )
 }
+
+class Canvas {
+  /**
+   * The canvas dom node.
+   */
+  canvas: HTMLCanvasElement | null
+
+  /**
+   * Stores the canvas rendering context for drawing.
+   */
+  context: CanvasRenderingContext2D | null
+
+  /**
+   * Stores the state required to remember the initial clicks.
+   */
+  prevCursor: PrevCursor
+
+  /**
+   * A history of all the drawings you've made, which is used for things like `undo`.
+   */
+  drawings: Drawing[]
+
+  /**
+   * Options for customizing the canvas.
+   */
+  options: Record<string, any>
+
+  constructor(element: HTMLCanvasElement | null, options: CanvasOptions = {}) {
+    this.canvas = element
+    this.context = this.canvas?.getContext('2d') ?? null
+    this.options = options
+    this.prevCursor = { x: 0, y: 0, isLeft: false, isRight: false }
+    this.drawings = []
+
+    // TODO: move to a base class since.
+    if (!this.canvas) {
+      throw new Error('<canvas> element with id cwl-canvas was not found')
+    }
+    if (!this.context) {
+      throw new Error('<canvas> element is missing context 2d')
+    }
+
+    this.#redrawCanvas()
+    this.#setupEvents(this.canvas)
+    this.print()
+  }
+
+  #drawLine(x0: number, y0: number, x1: number, y1: number) {
+    if (!this.context) {
+      // TODO: figure out how to type this so we don't need to do null checks
+      throw new Error('This should not happen.')
+    }
+
+    this.context.beginPath()
+    this.context.moveTo(x0, y0)
+    this.context.lineTo(x1, y1)
+    this.context.strokeStyle = '#000'
+    this.context.lineWidth = 2
+    this.context.stroke()
+  }
+
+  #redrawCanvas = () => {
+    const canvas = this.canvas
+    const context = this.context
+    const drawings = this.drawings
+
+    if (!canvas) {
+      return
+    } else if (!context) {
+      return
+    }
+
+    canvas.width = document.body.clientWidth
+    canvas.height = document.body.clientHeight
+
+    for (let i = 0; i < drawings.length; i++) {
+      const line = drawings[i]
+      this.#drawLine(
+        this.#toScreenX(line.x0),
+        this.#toScreenY(line.y0),
+        this.#toScreenX(line.x1),
+        this.#toScreenY(line.y1),
+      )
+    }
+  }
+
+  // #==== Event handlers
+  #setupEvents = (canvas: HTMLCanvasElement) => {
+    window.addEventListener('resize', this.#handleWindowResize)
+    // #==== Mouse Event Handlers
+    canvas.addEventListener('mousedown', this.#handleMouseDown)
+    canvas.addEventListener('mouseup', this.#handleMouseUp)
+    canvas.addEventListener('mouseout', this.#handleMouseOut)
+    canvas.addEventListener('mousemove', this.#handleMouseMove)
+    canvas.addEventListener('wheel', this.#handleMouseWheel)
+
+    // #==== Touch Event Handlers
+
+    canvas.addEventListener('touchstart', (e: TouchEvent) => {
+      //
+    })
+
+    canvas.addEventListener('touchend', (e: TouchEvent) => {
+      //
+    })
+
+    canvas.addEventListener('touchcancel', (e: TouchEvent) => {
+      //
+    })
+
+    canvas.addEventListener('touchmove', (e: TouchEvent) => {
+      //
+    })
+  }
+
+  #handleWindowResize = () => {
+    this.#redrawCanvas()
+  }
+
+  #handleMouseDown = (e: MouseEvent) => {
+    this.prevCursor = {
+      x: e.pageX,
+      y: e.pageY,
+      isLeft: e.button === 0,
+      isRight: e.button === 2,
+    }
+  }
+
+  #handleMouseUp = (e: MouseEvent) => {
+    this.prevCursor = {
+      x: e.pageX,
+      y: e.pageY,
+      isLeft: false,
+      isRight: false,
+    }
+  }
+
+  #handleMouseOut = (e: MouseEvent) => {
+    //
+  }
+
+  #handleMouseWheel = (e: MouseEvent) => {
+    //
+  }
+
+  #handleMouseMove = (e: MouseEvent) => {
+    const cursorX = e.pageX
+    const cursorY = e.pageY
+    const scaledX = this.#toScreenX(cursorX)
+    const scaledY = this.#toScreenY(cursorY)
+    const prevScaledX = this.#toScreenX(this.prevCursor.x)
+    const prevScaledY = this.#toScreenY(this.prevCursor.y)
+
+    const isLeftMouseDown = this.prevCursor.isLeft
+    const isRightMouseDown = this.prevCursor.isRight
+
+    if (isLeftMouseDown) {
+      this.drawings.push({
+        x0: prevScaledX,
+        y0: prevScaledY,
+        x1: scaledX,
+        y1: scaledY,
+      })
+
+      this.#drawLine(this.prevCursor.x, this.prevCursor.y, cursorX, cursorY)
+    }
+    if (isRightMouseDown) {
+      // move the screen.
+    }
+
+    this.prevCursor = {
+      x: cursorX,
+      y: cursorY,
+      isLeft: isLeftMouseDown,
+      isRight: isRightMouseDown,
+    }
+  }
+
+  #onTouchMove = (event) => {
+    console.log('EVENT', event)
+  }
+
+  // #==== Utilities
+
+  #toScreenX = (x: number, offset = 0, scale = 1) => {
+    return (x + offset) * scale
+  }
+
+  #toScreenY(y: number, offset = 0, scale = 1) {
+    return (y + offset) * scale
+  }
+
+  /**
+   * Destroy the canvas element.
+   */
+  dispose() {
+    // TODO: Destroy the canvas element here
+  }
+
+  /**
+   * Prints internal state for debugging.
+   */
+  print() {
+    console.log('CANVAS', this.canvas)
+  }
+}
+
+// #==== Types
+
+interface PrevCursor {
+  x: number
+  y: number
+  isLeft: boolean
+  isRight: boolean
+}
+
+interface Drawing {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
+interface CanvasOptions {}
