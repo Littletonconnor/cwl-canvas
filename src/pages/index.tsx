@@ -41,9 +41,9 @@ class Canvas {
   context: CanvasRenderingContext2D | null
 
   /**
-   * Stores the state required to remember the initial clicks.
+   * Handles internal state of the canvas like cursor position
    */
-  prevCursor: PrevCursor
+  state: State
 
   /**
    * A history of all the drawings you've made, which is used for things like `undo`.
@@ -59,7 +59,7 @@ class Canvas {
     this.canvas = element
     this.context = this.canvas?.getContext('2d') ?? null
     this.options = options
-    this.prevCursor = { x: 0, y: 0, isLeft: false, isRight: false }
+    this.state = { x: 0, y: 0, offsetX: 0, offsetY: 0, scale: 1, isLeft: false, isRight: false }
     this.drawings = []
 
     // TODO: move to a base class since.
@@ -114,9 +114,15 @@ class Canvas {
     }
   }
 
-  // #==== Event handlers
   #setupEvents = (canvas: HTMLCanvasElement) => {
+    // Disable right clicking
+    document.oncontextmenu = function () {
+      return false
+    }
+
+    // #==== Global Event Handlers
     window.addEventListener('resize', this.#handleWindowResize)
+
     // #==== Mouse Event Handlers
     canvas.addEventListener('mousedown', this.#handleMouseDown)
     canvas.addEventListener('mouseup', this.#handleMouseUp)
@@ -125,30 +131,21 @@ class Canvas {
     canvas.addEventListener('wheel', this.#handleMouseWheel)
 
     // #==== Touch Event Handlers
-
-    canvas.addEventListener('touchstart', (e: TouchEvent) => {
-      //
-    })
-
-    canvas.addEventListener('touchend', (e: TouchEvent) => {
-      //
-    })
-
-    canvas.addEventListener('touchcancel', (e: TouchEvent) => {
-      //
-    })
-
-    canvas.addEventListener('touchmove', (e: TouchEvent) => {
-      //
-    })
+    canvas.addEventListener('touchstart', this.#handleTouchStart)
+    canvas.addEventListener('touchend', this.#handleTouchEnd)
+    canvas.addEventListener('touchcancel', this.#handleTouchCancel)
+    canvas.addEventListener('touchmove', this.#handleTouchMove)
   }
 
   #handleWindowResize = () => {
     this.#redrawCanvas()
   }
 
+  // #==== Mouse Events
+
   #handleMouseDown = (e: MouseEvent) => {
-    this.prevCursor = {
+    this.state = {
+      ...this.state,
       x: e.pageX,
       y: e.pageY,
       isLeft: e.button === 0,
@@ -157,7 +154,8 @@ class Canvas {
   }
 
   #handleMouseUp = (e: MouseEvent) => {
-    this.prevCursor = {
+    this.state = {
+      ...this.state,
       x: e.pageX,
       y: e.pageY,
       isLeft: false,
@@ -166,11 +164,11 @@ class Canvas {
   }
 
   #handleMouseOut = (e: MouseEvent) => {
-    //
+    console.log('handleMouseOut', e)
   }
 
   #handleMouseWheel = (e: MouseEvent) => {
-    //
+    console.log('handleMouseOut', e)
   }
 
   #handleMouseMove = (e: MouseEvent) => {
@@ -178,11 +176,11 @@ class Canvas {
     const cursorY = e.pageY
     const scaledX = this.#toScreenX(cursorX)
     const scaledY = this.#toScreenY(cursorY)
-    const prevScaledX = this.#toScreenX(this.prevCursor.x)
-    const prevScaledY = this.#toScreenY(this.prevCursor.y)
+    const prevScaledX = this.#toScreenX(this.state.x)
+    const prevScaledY = this.#toScreenY(this.state.y)
 
-    const isLeftMouseDown = this.prevCursor.isLeft
-    const isRightMouseDown = this.prevCursor.isRight
+    const isLeftMouseDown = this.state.isLeft
+    const isRightMouseDown = this.state.isRight
 
     if (isLeftMouseDown) {
       this.drawings.push({
@@ -192,32 +190,60 @@ class Canvas {
         y1: scaledY,
       })
 
-      this.#drawLine(this.prevCursor.x, this.prevCursor.y, cursorX, cursorY)
+      this.#drawLine(this.state.x, this.state.y, cursorX, cursorY)
     }
     if (isRightMouseDown) {
       // move the screen.
+      const offsetX = (cursorX - this.state.x) / this.state.scale
+      const offsetY = (cursorY - this.state.y) / this.state.scale
+      this.#updateState({
+        offsetX: this.state.offsetX + offsetX,
+        offsetY: this.state.offsetY + offsetY,
+      })
+      this.#redrawCanvas()
     }
 
-    this.prevCursor = {
+    this.#updateState({
       x: cursorX,
       y: cursorY,
       isLeft: isLeftMouseDown,
       isRight: isRightMouseDown,
-    }
+    })
   }
 
-  #onTouchMove = (event) => {
-    console.log('EVENT', event)
+  // #==== Touch events
+
+  #handleTouchStart = (e: TouchEvent) => {
+    console.log('touchstart', e)
+  }
+
+  #handleTouchEnd = (e: TouchEvent) => {
+    console.log('touchend', e)
+  }
+
+  #handleTouchCancel = (e: TouchEvent) => {
+    console.log('touchcancel', e)
+  }
+
+  #handleTouchMove = (e: TouchEvent) => {
+    console.log('touchmove', e)
   }
 
   // #==== Utilities
 
-  #toScreenX = (x: number, offset = 0, scale = 1) => {
-    return (x + offset) * scale
+  #toScreenX = (x: number) => {
+    return (x + this.state.offsetX) * this.state.scale
   }
 
-  #toScreenY(y: number, offset = 0, scale = 1) {
-    return (y + offset) * scale
+  #toScreenY(y: number) {
+    return (y + this.state.offsetY) * this.state.scale
+  }
+
+  #updateState(state: Partial<State>) {
+    this.state = {
+      ...this.state,
+      ...state,
+    }
   }
 
   /**
@@ -237,11 +263,41 @@ class Canvas {
 
 // #==== Types
 
-interface PrevCursor {
+interface State {
+  /**
+   * The current x position.
+   */
   x: number
+
+  /**
+   * The current y position.
+   */
   y: number
+
+  /**
+   * The distance from the origin on the x axis.
+   */
+  offsetX: number
+
+  /**
+   * The distance from the origin on the y axis.
+   */
+  offsetY: number
+
+  /**
+   * Determines whether there was a left mouse click.
+   */
   isLeft: boolean
+
+  /**
+   * Determines whether there was a right mouse click.
+   */
   isRight: boolean
+
+  /**
+   * The current zoom scale of the document
+   */
+  scale: number
 }
 
 interface Drawing {
