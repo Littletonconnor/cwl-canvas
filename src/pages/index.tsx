@@ -29,7 +29,18 @@ export default function Home() {
   )
 }
 
-class Canvas {
+// #==== Base Class
+class BaseCanvas {
+  /**
+   * Handles internal state of the canvas like cursor position
+   */
+  state: State
+
+  /**
+   * Options for customizing the canvas.
+   */
+  options: Record<string, any>
+
   /**
    * The canvas dom node.
    */
@@ -41,80 +52,102 @@ class Canvas {
   context: CanvasRenderingContext2D | null
 
   /**
-   * Handles internal state of the canvas like cursor position
-   */
-  state: State
-
-  /**
    * A history of all the drawings you've made, which is used for things like `undo`.
    */
   drawings: Drawing[]
 
-  /**
-   * Options for customizing the canvas.
-   */
-  options: Record<string, any>
-
   constructor(element: HTMLCanvasElement | null, options: CanvasOptions = {}) {
+    this.state = {
+      tool: 'line',
+      x: 0,
+      y: 0,
+      offsetX: 0,
+      offsetY: 0,
+      scale: 1,
+      isLeft: false,
+      isRight: false,
+    }
+    this.options = options
+    this.drawings = []
     this.canvas = element
     this.context = this.canvas?.getContext('2d') ?? null
-    this.options = options
-    this.state = { x: 0, y: 0, offsetX: 0, offsetY: 0, scale: 1, isLeft: false, isRight: false }
-    this.drawings = []
 
-    // TODO: move to a base class since.
     if (!this.canvas) {
       throw new Error('<canvas> element with id cwl-canvas was not found')
     }
     if (!this.context) {
       throw new Error('<canvas> element is missing context 2d')
     }
+  }
+}
+
+class Canvas extends BaseCanvas {
+  constructor(element: HTMLCanvasElement | null, options: CanvasOptions = {}) {
+    super(element, options)
 
     this.#redrawCanvas()
-    this.#setupEvents(this.canvas)
+    this.#setupEvents()
     this.print()
   }
 
-  #drawLine(x0: number, y0: number, x1: number, y1: number) {
-    if (!this.context) {
-      // TODO: figure out how to type this so we don't need to do null checks
-      throw new Error('This should not happen.')
-    }
+  // #==== Drawing utilities
+  #determineDrawingTool(drawing: Drawing) {
+    switch (drawing.tool) {
+      case 'line':
+        return this.#drawLine(drawing)
+      case 'rectangle':
+        return this.#drawRectangle(drawing)
+      case 'text':
+        return this.#drawLine(drawing)
 
-    this.context.beginPath()
-    this.context.moveTo(x0, y0)
-    this.context.lineTo(x1, y1)
-    this.context.strokeStyle = '#000'
-    this.context.lineWidth = 2
-    this.context.stroke()
+      default:
+        throw new Error('Unsupported drawing tool provided.')
+    }
+  }
+
+  #drawLine(drawing: Drawing) {
+    const x0 = this.#toScreenX(drawing.x0)
+    const y0 = this.#toScreenY(drawing.y0)
+    const x1 = this.#toScreenX(drawing.x1)
+    const y1 = this.#toScreenY(drawing.y1)
+
+    this.context!.beginPath()
+    this.context!.moveTo(x0, y0)
+    this.context!.lineTo(x1, y1)
+    this.context!.strokeStyle = '#000'
+    this.context!.lineWidth = 2
+    this.context!.stroke()
+  }
+
+  #drawRectangle(drawing: Drawing) {
+    const x0 = this.#toScreenX(drawing.x0)
+    const y0 = this.#toScreenY(drawing.y0)
+    const x1 = this.#toScreenX(drawing.x1)
+    const y1 = this.#toScreenY(drawing.y1)
+
+    this.context!.beginPath()
+    this.context!.moveTo(x0, y0)
+    this.context!.lineTo(x1, y1)
+    this.context!.strokeStyle = '#000'
+    this.context!.lineWidth = 2
+    this.context!.stroke()
   }
 
   #redrawCanvas = () => {
+    console.log('CALLING REDRAW')
     const canvas = this.canvas
-    const context = this.context
     const drawings = this.drawings
 
-    if (!canvas) {
-      return
-    } else if (!context) {
-      return
-    }
-
-    canvas.width = document.body.clientWidth
-    canvas.height = document.body.clientHeight
+    canvas!.width = document.body.clientWidth
+    canvas!.height = document.body.clientHeight
 
     for (let i = 0; i < drawings.length; i++) {
-      const line = drawings[i]
-      this.#drawLine(
-        this.#toScreenX(line.x0),
-        this.#toScreenY(line.y0),
-        this.#toScreenX(line.x1),
-        this.#toScreenY(line.y1),
-      )
+      const drawing = drawings[i]
+      this.#determineDrawingTool(drawing)
     }
   }
 
-  #setupEvents = (canvas: HTMLCanvasElement) => {
+  #setupEvents = () => {
     // Disable right clicking
     document.oncontextmenu = function () {
       return false
@@ -124,17 +157,17 @@ class Canvas {
     window.addEventListener('resize', this.#handleWindowResize)
 
     // #==== Mouse Event Handlers
-    canvas.addEventListener('mousedown', this.#handleMouseDown)
-    canvas.addEventListener('mouseup', this.#handleMouseUp)
-    canvas.addEventListener('mouseout', this.#handleMouseOut)
-    canvas.addEventListener('mousemove', this.#handleMouseMove)
-    canvas.addEventListener('wheel', this.#handleMouseWheel)
+    this.canvas!.addEventListener('mousedown', this.#handleMouseDown)
+    this.canvas!.addEventListener('mouseup', this.#handleMouseUp)
+    this.canvas!.addEventListener('mouseout', this.#handleMouseOut)
+    this.canvas!.addEventListener('mousemove', this.#handleMouseMove)
+    this.canvas!.addEventListener('wheel', this.#handleMouseWheel)
 
     // #==== Touch Event Handlers
-    canvas.addEventListener('touchstart', this.#handleTouchStart)
-    canvas.addEventListener('touchend', this.#handleTouchEnd)
-    canvas.addEventListener('touchcancel', this.#handleTouchCancel)
-    canvas.addEventListener('touchmove', this.#handleTouchMove)
+    this.canvas!.addEventListener('touchstart', this.#handleTouchStart)
+    this.canvas!.addEventListener('touchend', this.#handleTouchEnd)
+    this.canvas!.addEventListener('touchcancel', this.#handleTouchCancel)
+    this.canvas!.addEventListener('touchmove', this.#handleTouchMove)
   }
 
   #handleWindowResize = () => {
@@ -174,23 +207,30 @@ class Canvas {
   #handleMouseMove = (e: MouseEvent) => {
     const cursorX = e.pageX
     const cursorY = e.pageY
-    const scaledX = this.#toScreenX(cursorX)
-    const scaledY = this.#toScreenY(cursorY)
-    const prevScaledX = this.#toScreenX(this.state.x)
-    const prevScaledY = this.#toScreenY(this.state.y)
+    const scaledX = this.#toTrueX(cursorX)
+    const scaledY = this.#toTrueY(cursorY)
+    const prevScaledX = this.#toTrueX(this.state.x)
+    const prevScaledY = this.#toTrueY(this.state.y)
 
     const isLeftMouseDown = this.state.isLeft
     const isRightMouseDown = this.state.isRight
 
     if (isLeftMouseDown) {
       this.drawings.push({
+        tool: this.state.tool,
         x0: prevScaledX,
         y0: prevScaledY,
         x1: scaledX,
         y1: scaledY,
       })
 
-      this.#drawLine(this.state.x, this.state.y, cursorX, cursorY)
+      this.#drawLine({
+        x0: this.state.x,
+        y0: this.state.y,
+        x1: cursorX,
+        y1: cursorY,
+        tool: this.state.tool,
+      })
     }
     if (isRightMouseDown) {
       // move the screen.
@@ -231,6 +271,22 @@ class Canvas {
 
   // #==== Utilities
 
+  #toTrueX = (x: number) => {
+    return x / this.state.scale - this.state.offsetX
+  }
+
+  #toTrueY(y: number) {
+    return y / this.state.scale - this.state.offsetY
+  }
+
+  #toTrueHeight = () => {
+    return this.canvas!.clientHeight / this.state.scale
+  }
+
+  #toTrueWidth = () => {
+    return this.canvas!.clientWidth / this.state.scale
+  }
+
   #toScreenX = (x: number) => {
     return (x + this.state.offsetX) * this.state.scale
   }
@@ -256,14 +312,13 @@ class Canvas {
   /**
    * Prints internal state for debugging.
    */
-  print() {
-    console.log('CANVAS', this.canvas)
-  }
+  print() {}
 }
 
 // #==== Types
 
 interface State {
+  tool: Tool
   /**
    * The current x position.
    */
@@ -300,7 +355,10 @@ interface State {
   scale: number
 }
 
+type Tool = 'line' | 'rectangle' | 'text'
+
 interface Drawing {
+  tool: Tool
   x0: number
   y0: number
   x1: number
