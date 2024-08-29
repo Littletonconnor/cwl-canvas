@@ -58,7 +58,7 @@ class BaseCanvas {
 
   constructor(element: HTMLCanvasElement | null, options: CanvasOptions = {}) {
     this.state = {
-      tool: 'line',
+      tool: 'rectangle',
       x: 0,
       y: 0,
       offsetX: 0,
@@ -125,16 +125,18 @@ class Canvas extends BaseCanvas {
     const x1 = this.#toScreenX(drawing.x1)
     const y1 = this.#toScreenY(drawing.y1)
 
+    const width = x1 - x0
+    const height = y1 - y0
+
     this.context!.beginPath()
-    this.context!.moveTo(x0, y0)
-    this.context!.lineTo(x1, y1)
+    this.context!.rect(x0, y0, width, height)
     this.context!.strokeStyle = '#000'
     this.context!.lineWidth = 2
     this.context!.stroke()
+    this.context!.fill()
   }
 
   #redrawCanvas = () => {
-    console.log('CALLING REDRAW')
     const canvas = this.canvas
     const drawings = this.drawings
 
@@ -207,28 +209,27 @@ class Canvas extends BaseCanvas {
   #handleMouseMove = (e: MouseEvent) => {
     const cursorX = e.pageX
     const cursorY = e.pageY
-    const scaledX = this.#toTrueX(cursorX)
-    const scaledY = this.#toTrueY(cursorY)
     const prevScaledX = this.#toTrueX(this.state.x)
     const prevScaledY = this.#toTrueY(this.state.y)
+    const scaledX = this.#toTrueX(cursorX)
+    const scaledY = this.#toTrueY(cursorY)
 
     const isLeftMouseDown = this.state.isLeft
     const isRightMouseDown = this.state.isRight
 
     if (isLeftMouseDown) {
-      this.drawings.push({
-        tool: this.state.tool,
+      this.#updateDrawings({
         x0: prevScaledX,
         y0: prevScaledY,
         x1: scaledX,
         y1: scaledY,
+        tool: this.state.tool,
       })
-
-      this.#drawLine({
-        x0: this.state.x,
-        y0: this.state.y,
-        x1: cursorX,
-        y1: cursorY,
+      this.#determineDrawingTool({
+        x0: prevScaledX,
+        y0: prevScaledY,
+        x1: scaledX,
+        y1: scaledY,
         tool: this.state.tool,
       })
     }
@@ -275,7 +276,7 @@ class Canvas extends BaseCanvas {
     return x / this.state.scale - this.state.offsetX
   }
 
-  #toTrueY(y: number) {
+  #toTrueY = (y: number) => {
     return y / this.state.scale - this.state.offsetY
   }
 
@@ -291,7 +292,7 @@ class Canvas extends BaseCanvas {
     return (x + this.state.offsetX) * this.state.scale
   }
 
-  #toScreenY(y: number) {
+  #toScreenY = (y: number) => {
     return (y + this.state.offsetY) * this.state.scale
   }
 
@@ -300,6 +301,10 @@ class Canvas extends BaseCanvas {
       ...this.state,
       ...state,
     }
+  }
+
+  #updateDrawings(drawing: Drawing) {
+    this.drawings.push(drawing)
   }
 
   /**
@@ -312,7 +317,9 @@ class Canvas extends BaseCanvas {
   /**
    * Prints internal state for debugging.
    */
-  print() {}
+  print() {
+    console.log('STATE', this.state)
+  }
 }
 
 // #==== Types
