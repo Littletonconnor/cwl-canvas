@@ -5,12 +5,17 @@ import { cn } from '@/lib/utils'
 
 const inter = Inter({ subsets: ['latin'] })
 
+// TODO: Changing tools works, but the redrawing is a little messed up so need to figure out why.
+
 export default function Home() {
+  // TODO: fix the type here
+  const canvasRef = useRef<any>(null)
   const canvasEl = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     const options = {}
     const canvas = new Canvas(canvasEl.current, options)
+    canvasRef.current = canvas
 
     return () => {
       canvas.dispose()
@@ -18,13 +23,36 @@ export default function Home() {
   }, [])
 
   return (
-    <main className={cn('relative flex min-h-screen flex-col items-center', inter.className)}>
-      <div className="flex">
-        <h1>Canvas App</h1>
-      </div>
+    <main className={cn('relative size-full', inter.className)}>
       <canvas ref={canvasEl} className="absolute inset-0 size-full" id="cwl-canvas">
         Your browser does not support HTML5 canvas
       </canvas>
+      {/* TODO: Pull this out into a toolbar component */}
+      <div className="pointer-events-none relative grid size-full max-h-full grid-cols-1 grid-rows-[minmax(0px,_1fr)_auto]">
+        <div className="row-[2] flex justify-center rounded-xl pb-4">
+          <div className="pointer-events-auto z-50 flex h-12 items-center rounded-xl shadow-[0_0_2px_hsl(0,0%,0%,0.16),0_2px_3px_hsl(0,0%,0%,0.24),0_2px_6px_hsl(0,0%,0%,0.1),inset_0_0_0_1px_rgb(255,255,255)]">
+            <button className="px-2" onClick={() => {}}>
+              Grab
+            </button>
+            <button
+              className="px-2"
+              onClick={() => {
+                canvasRef.current.drawingTool = 'line'
+              }}
+            >
+              Line
+            </button>
+            <button
+              className="px-2"
+              onClick={() => {
+                canvasRef.current.drawingTool = 'rectangle'
+              }}
+            >
+              Rectangle
+            </button>
+          </div>
+        </div>
+      </div>
     </main>
   )
 }
@@ -52,13 +80,18 @@ class BaseCanvas {
   context: CanvasRenderingContext2D | null
 
   /**
+   * Represents the current drawing.
+   */
+  currentDrawing: CurrentDrawing
+
+  /**
    * A history of all the drawings you've made, which is used for things like `undo`.
    */
   drawings: Drawing[]
 
   constructor(element: HTMLCanvasElement | null, options: CanvasOptions = {}) {
     this.state = {
-      tool: 'rectangle',
+      tool: options.tool ?? 'line',
       x: 0,
       y: 0,
       offsetX: 0,
@@ -68,6 +101,12 @@ class BaseCanvas {
       isRight: false,
     }
     this.options = options
+    this.currentDrawing = {
+      x0: 0,
+      y0: 0,
+      x1: 0,
+      y1: 0,
+    }
     this.drawings = []
     this.canvas = element
     this.context = this.canvas?.getContext('2d') ?? null
@@ -92,14 +131,13 @@ class Canvas extends BaseCanvas {
 
   // #==== Drawing utilities
   #determineDrawingTool(drawing: Drawing) {
-    switch (drawing.tool) {
+    switch (this.state.tool) {
       case 'line':
         return this.#drawLine(drawing)
       case 'rectangle':
         return this.#drawRectangle(drawing)
       case 'text':
         return this.#drawLine(drawing)
-
       default:
         throw new Error('Unsupported drawing tool provided.')
     }
@@ -133,19 +171,19 @@ class Canvas extends BaseCanvas {
     this.context!.strokeStyle = '#000'
     this.context!.lineWidth = 2
     this.context!.stroke()
-    this.context!.fill()
   }
 
   #redrawCanvas = () => {
     const canvas = this.canvas
-    const drawings = this.drawings
-
     canvas!.width = document.body.clientWidth
     canvas!.height = document.body.clientHeight
 
-    for (let i = 0; i < drawings.length; i++) {
-      const drawing = drawings[i]
+    for (const drawing of this.drawings) {
       this.#determineDrawingTool(drawing)
+    }
+
+    if (this.currentDrawing) {
+      this.#determineDrawingTool(this.currentDrawing)
     }
   }
 
@@ -178,26 +216,6 @@ class Canvas extends BaseCanvas {
 
   // #==== Mouse Events
 
-  #handleMouseDown = (e: MouseEvent) => {
-    this.state = {
-      ...this.state,
-      x: e.pageX,
-      y: e.pageY,
-      isLeft: e.button === 0,
-      isRight: e.button === 2,
-    }
-  }
-
-  #handleMouseUp = (e: MouseEvent) => {
-    this.state = {
-      ...this.state,
-      x: e.pageX,
-      y: e.pageY,
-      isLeft: false,
-      isRight: false,
-    }
-  }
-
   #handleMouseOut = (e: MouseEvent) => {
     console.log('handleMouseOut', e)
   }
@@ -206,7 +224,50 @@ class Canvas extends BaseCanvas {
     console.log('handleMouseOut', e)
   }
 
+  #handleMouseDown = (e: MouseEvent) => {
+    this.state = {
+      ...this.state,
+      x: e.pageX,
+      y: e.pageY,
+      isLeft: e.button === 0,
+      isRight: e.button === 2,
+    }
+
+    if (this.state.isLeft) {
+      const startX = this.#toTrueX(e.pageX)
+      const startY = this.#toTrueY(e.pageY)
+
+      this.#setCurrentDrawing({
+        x0: startX,
+        y0: startY,
+        x1: startX,
+        y1: startY,
+      })
+
+      this.#redrawCanvas()
+    }
+  }
+
+  #handleMouseUp = () => {
+    if (this.currentDrawing) {
+      this.drawings.push(this.currentDrawing)
+      this.#setCurrentDrawing({
+        x0: 0,
+        y0: 0,
+        x1: 0,
+        y1: 0,
+      })
+    }
+    this.#setState({
+      isLeft: false,
+      isRight: false,
+    })
+
+    this.#redrawCanvas()
+  }
+
   #handleMouseMove = (e: MouseEvent) => {
+    console.log('MOVE')
     const cursorX = e.pageX
     const cursorY = e.pageY
     const prevScaledX = this.#toTrueX(this.state.x)
@@ -214,37 +275,50 @@ class Canvas extends BaseCanvas {
     const scaledX = this.#toTrueX(cursorX)
     const scaledY = this.#toTrueY(cursorY)
 
+    const tool = this.state.tool
     const isLeftMouseDown = this.state.isLeft
     const isRightMouseDown = this.state.isRight
 
     if (isLeftMouseDown) {
-      this.#updateDrawings({
-        x0: prevScaledX,
-        y0: prevScaledY,
-        x1: scaledX,
-        y1: scaledY,
-        tool: this.state.tool,
-      })
-      this.#determineDrawingTool({
-        x0: prevScaledX,
-        y0: prevScaledY,
-        x1: scaledX,
-        y1: scaledY,
-        tool: this.state.tool,
-      })
+      // ==== Attempt to not always update drawings array.
+      // create a current drawing state so that I can optionally update this
+      // for shapes like rectangles.
+
+      if (tool === 'line') {
+        this.#setCurrentDrawing({
+          x0: prevScaledX,
+          y0: prevScaledY,
+          x1: scaledX,
+          y1: scaledY,
+        })
+        this.#updateDrawings({
+          x0: prevScaledX,
+          y0: prevScaledY,
+          x1: scaledX,
+          y1: scaledY,
+        })
+      } else if (tool === 'rectangle') {
+        // For rectangle's we only update the x1,y1 positions and then add the drawing to our drawings array once the mouseUp event is triggered.
+        // This is different then lines where we constantly add each point to the drawings array.
+        this.#setCurrentDrawing({
+          x1: scaledX,
+          y1: scaledY,
+        })
+      }
     }
     if (isRightMouseDown) {
       // move the screen.
       const offsetX = (cursorX - this.state.x) / this.state.scale
       const offsetY = (cursorY - this.state.y) / this.state.scale
-      this.#updateState({
+      this.#setState({
         offsetX: this.state.offsetX + offsetX,
         offsetY: this.state.offsetY + offsetY,
       })
-      this.#redrawCanvas()
     }
 
-    this.#updateState({
+    this.#redrawCanvas()
+
+    this.#setState({
       x: cursorX,
       y: cursorY,
       isLeft: isLeftMouseDown,
@@ -296,7 +370,18 @@ class Canvas extends BaseCanvas {
     return (y + this.state.offsetY) * this.state.scale
   }
 
-  #updateState(state: Partial<State>) {
+  set drawingTool(drawingTool: Tool) {
+    this.state.tool = drawingTool
+  }
+
+  #setCurrentDrawing(currentDrawing: Partial<CurrentDrawing>) {
+    this.currentDrawing = {
+      ...this.currentDrawing,
+      ...currentDrawing,
+    }
+  }
+
+  #setState(state: Partial<State>) {
     this.state = {
       ...this.state,
       ...state,
@@ -319,6 +404,8 @@ class Canvas extends BaseCanvas {
    */
   print() {
     console.log('STATE', this.state)
+    console.log('Drawings', this.drawings)
+    console.log('Current Drawing', this.currentDrawing)
   }
 }
 
@@ -365,11 +452,19 @@ interface State {
 type Tool = 'line' | 'rectangle' | 'text'
 
 interface Drawing {
-  tool: Tool
   x0: number
   y0: number
   x1: number
   y1: number
 }
 
-interface CanvasOptions {}
+interface CurrentDrawing {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
+interface CanvasOptions {
+  tool?: Tool
+}
